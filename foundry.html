@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b0f19">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>GRID COMMAND // Focus Telemetry</title>
+<style>
+  :root {
+    --bg: #0b0f19;
+    --panel: #131b2e;
+    --border: #1e293b;
+    --accent: #00f0ff;
+    --accent-dim: rgba(0, 240, 255, 0.12);
+    --amber: #ffb703;
+    --green: #10b981;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', Courier, monospace;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  /* Top Telemetry Bar */
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    text-align: center;
+  }
+  .stat-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    padding: 6px 4px;
+    border-radius: 6px;
+  }
+  .stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-val { font-size: 14px; font-weight: bold; color: var(--accent); margin-top: 2px; }
+  .stat-val.amber { color: var(--amber); }
+  .stat-val.green { color: var(--green); }
+
+  /* Main Scrollable Area */
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .tab-view { display: none; }
+  .tab-view.active { display: block; }
+
+  /* Panels & Cards */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+
+  /* Timer View */
+  .timer-display {
+    font-size: 56px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--accent);
+    text-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+    margin: 20px 0;
+    letter-spacing: 2px;
+  }
+  .mode-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .mode-btn {
+    flex: 1;
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 10px 6px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  .mode-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+  select, input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .btn-primary {
+    width: 100%;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .btn-danger {
+    width: 100%;
+    background: transparent;
+    color: var(--red);
+    border: 1px solid var(--red);
+    padding: 12px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 10px;
+  }
+
+  /* Manifest (Goals) */
+  .goal-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .goal-item.done { opacity: 0.5; border-color: var(--green); }
+  .goal-info { flex: 1; margin-right: 10px; }
+  .goal-title { font-size: 14px; font-weight: bold; }
+  .goal-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .tier-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    margin-right: 6px;
+  }
+  .check-btn {
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: bold;
+  }
+
+  /* Tech Tree / Foundry */
+  .node-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .node-lvl { color: var(--amber); font-weight: bold; font-size: 12px; }
+  .node-desc { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .upgrade-btn {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 11px;
+    text-align: right;
+    min-width: 95px;
+  }
+  .upgrade-btn:disabled {
+    opacity: 0.35;
+    border-color: var(--muted);
+    color: var(--muted);
+    background: transparent;
+  }
+
+  /* Telemetry Bars */
+  .bar-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; }
+  .bar-label { width: 45px; color: var(--muted); }
+  .bar-track { flex: 1; background: var(--bg); height: 14px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); margin: 0 10px; }
+  .bar-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.3s; }
+  .bar-val { width: 45px; text-align: right; font-size: 11px; }
+
+  /* Bottom Navigation */
+  nav {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    padding: 14px 4px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .nav-btn.active {
+    color: var(--accent);
+    border-top: 2px solid var(--accent);
+    background: rgba(0, 240, 255, 0.04);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="stat-box">
+    <div class="stat-label">MW-Cycles</div>
+    <div class="stat-val" id="ui-cycles">0</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Blueprints</div>
+    <div class="stat-val amber" id="ui-bp">0</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Clock Mult</div>
+    <div class="stat-val green" id="ui-mult">1.00x</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">SNR Purity</div>
+    <div class="stat-val" id="ui-snr">100%</div>
+  </div>
+</header>
+
+<main>
+  <!-- TAB 1: SYNTHESIS TIMER -->
+  <section id="tab-timer" class="tab-view active">
+    <div class="card">
+      <div class="card-title">Synthesis Engine // Focus Timer</div>
+      <div class="mode-selector">
+        <button class="mode-btn active" onclick="setMode(25, this)">25M SYNC</button>
+        <button class="mode-btn" onclick="setMode(50, this)">50M DEEP</button>
+        <button class="mode-btn" onclick="setMode(0, this)">OVERCLOCK (UP)</button>
+      </div>
+      
+      <select id="active-goal-select">
+        <option value="general">General System Operations</option>
+      </select>
+
+      <div class="timer-display" id="timer-readout">25:00</div>
+
+      <button class="btn-primary" id="start-btn" onclick="toggleTimer()">ENGAGE SYNTHESIS</button>
+      <button class="btn-danger" id="abort-btn" style="display:none;" onclick="abortTimer()">THERMAL ABORT (-50% YIELD)</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">System Rules</div>
+      <p style="font-size: 12px; color: var(--muted); line-height: 1.5;">
+        • <strong>1 Min Focus</strong> = 1 MW-Cycle × Clock Multiplier.<br>
+        • Completing a session boosts <strong>Clock Multiplier</strong> (+0.05x).<br>
+        • Aborting early triggers a <strong>Thermal Fault</strong>: resets multiplier to 1.0x and degrades Signal-to-Noise Ratio (SNR).
+      </p>
+    </div>
+  </section>
+
+  <!-- TAB 2: WEEKLY MANIFEST -->
+  <section id="tab-goals" class="tab-view">
+    <div class="card">
+      <div class="card-title">Add Weekly Objective</div>
+      <input type="text" id="new-goal-title" placeholder="e.g., Verify LNA layout / Block A...">
+      <select id="new-goal-tier">
+        <option value="1">Tier 1: Routine Maintenance (+1 BP)</option>
+        <option value="2" selected>Tier 2: Subsystem Integration (+3 BP)</option>
+        <option value="3">Tier 3: Core Architecture (+5 BP)</option>
+      </select>
+      <button class="btn-primary" onclick="addGoal()">COMMIT TO MANIFEST</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Active Manifest</div>
+      <div id="goals-list"></div>
+    </div>
+  </section>
+
+  <!-- TAB 3: THE FOUNDRY (TECH TREE) -->
+  <section id="tab-foundry" class="tab-view">
+    <div class="card">
+      <div class="card-title">Facility Subsystems</div>
+      <div id="nodes-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Real-World Requisition Store</div>
+      <div id="rewards-list"></div>
+      <div style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px;">
+        <input type="text" id="custom-reward-title" placeholder="Custom reward (e.g., Afternoon off, New tool)">
+        <select id="custom-reward-cost">
+          <option value="5">Cost: 5 Blueprints</option>
+          <option value="15">Cost: 15 Blueprints</option>
+          <option value="30">Cost: 30 Blueprints</option>
+          <option value="50">Cost: 50 Blueprints</option>
+        </select>
+        <button class="btn-primary" onclick="addCustomReward()">ADD REQUISITION ITEM</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 4: TELEMETRY -->
+  <section id="tab-telemetry" class="tab-view">
+    <div class="card">
+      <div class="card-title">Weekly Duty Cycle (7-Day Load)</div>
+      <div id="weekly-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Data Backup & Reset</div>
+      <button class="mode-btn" style="width:100%; margin-bottom: 8px;" onclick="exportData()">EXPORT TELEMETRY JSON</button>
+      <button class="btn-danger" onclick="resetCompletedGoals()">CLEAR COMPLETED WEEKLY GOALS</button>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="nav-btn active" onclick="switchTab('timer', this)">SYNTHESIS</button>
+  <button class="nav-btn" onclick="switchTab('goals', this)">MANIFEST</button>
+  <button class="nav-btn" onclick="switchTab('foundry', this)">FOUNDRY</button>
+  <button class="nav-btn" onclick="switchTab('telemetry', this)">TELEMETRY</button>
+</nav>
+
+<script>
+  // Default State
+  const defaultState = {
+    cycles: 0,
+    blueprints: 0,
+    baseMult: 1.0,
+    streakBonus: 0.0,
+    completedSessions: 0,
+    abortedSessions: 0,
+    goals: [
+      { id: 'g1', title: 'Complete core design block verification', tier: 3, mins: 0, done: false },
+      { id: 'g2', title: 'Automate testbench parsing script', tier: 2, mins: 0, done: false }
+    ],
+    nodes: [
+      { id: 'n1', name: 'Tokamak Power Core', desc: '+0.10x permanent base clock multiplier per level', lvl: 1, costC: 100, costB: 2 },
+      { id: 'n2', name: 'Cryo-Cooling Loop', desc: 'Reduces thermal abort penalty by 10% per level', lvl: 0, costC: 250, costB: 4 },
+      { id: 'n3', name: 'RF Phased Array', desc: '+15% bonus MW-Cycles on Tier 3 tasks', lvl: 0, costC: 400, costB: 6 },
+      { id: 'n4', name: 'Automated Lithography Bay', desc: 'Generates +1 bonus Blueprint every 5 completed sessions', lvl: 0, costC: 800, costB: 10 }
+    ],
+    rewards: [
+      { id: 'r1', title: 'Guilt-Free Hobby Evening', costB: 10 },
+      { id: 'r2', title: 'Order Takeout / Specialty Coffee', costB: 15 },
+      { id: 'r3', title: 'Workspace Hardware / Tool Upgrade', costB: 40 }
+    ],
+    dailyMins: { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 }
+  };
+
+  let state = JSON.parse(localStorage.getItem('foundryState')) || defaultState;
+
+  // Timer variables
+  let timerMode = 25; // 25, 50, or 0 (count up)
+  let timerRunning = false;
+  let timerStartTimestamp = null;
+  let timerTargetSeconds = 25 * 60;
+  let timerInterval = null;
+
+  function saveState() {
+    localStorage.setItem('foundryState', JSON.stringify(state));
+    renderAll();
+  }
+
+  function getTotalMult() {
+    const coreLvl = state.nodes.find(n => n.id === 'n1').lvl;
+    return +(1.0 + (coreLvl - 1) * 0.10 + state.streakBonus).toFixed(2);
+  }
+
+  // UI Navigation
+  function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // Timer Functions
+  function setMode(mins, btn) {
+    if (timerRunning) return;
+    timerMode = mins;
+    document.querySelectorAll('.mode-btn').forEach(el => el.classList.remove('active'));
+    btn.classList.add('active');
+    timerTargetSeconds = mins * 60;
+    updateTimerDisplay(mins === 0 ? 0 : timerTargetSeconds);
+  }
+
+  function updateTimerDisplay(sec) {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = (sec % 60).toString().padStart(2, '0');
+    document.getElementById('timer-readout').innerText = `${m}:${s}`;
+  }
+
+  function toggleTimer() {
+    if (!timerRunning) {
+      // Start Timer using hardware timestamp so phone sleep doesn't freeze it
+      timerRunning = true;
+      timerStartTimestamp = Date.now();
+      document.getElementById('start-btn').innerText = timerMode === 0 ? 'COMPLETE OVERCLOCK RUN' : 'SYNTHESIS IN PROGRESS...';
+      document.getElementById('abort-btn').style.display = 'block';
+      
+      timerInterval = setInterval(() => {
+        const elapsedSec = Math.floor((Date.now() - timerStartTimestamp) / 1000);
+        if (timerMode === 0) {
+          updateTimerDisplay(elapsedSec);
+        } else {
+          const remaining = Math.max(0, timerTargetSeconds - elapsedSec);
+          updateTimerDisplay(remaining);
+          if (remaining === 0) {
+            completeSession(timerMode);
+          }
+        }
+      }, 500);
+    } else if (timerMode === 0) {
+      // Stop Overclock mode manually and claim rewards
+      const elapsedMins = Math.floor((Date.now() - timerStartTimestamp) / 60000);
+      if (elapsedMins < 1) {
+        alert("Run for at least 1 full minute to log telemetry.");
+        return;
+      }
+      completeSession(elapsedMins);
+    }
+  }
+
+  function completeSession(minsLogged) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    document.getElementById('start-btn').innerText = 'ENGAGE SYNTHESIS';
+    document.getElementById('abort-btn').style.display = 'none';
+
+    const mult = getTotalMult();
+    const earnedCycles = Math.round(minsLogged * mult);
+    state.cycles += earnedCycles;
+    state.streakBonus = +(state.streakBonus + 0.05).toFixed(2);
+    state.completedSessions += 1;
+
+    // Lithography Bay passive BP bonus
+    const lithoLvl = state.nodes.find(n => n.id === 'n4').lvl;
+    if (lithoLvl > 0 && state.completedSessions % 5 === 0) {
+      state.blueprints += lithoLvl;
+    }
+
+    // Log time to selected goal
+    const goalId = document.getElementById('active-goal-select').value;
+    const goal = state.goals.find(g => g.id === goalId);
+    if (goal) goal.mins += minsLogged;
+
+    // Log time to current day of week
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = days[new Date().getDay()];
+    state.dailyMins[today] = (state.dailyMins[today] || 0) + minsLogged;
+
+    updateTimerDisplay(timerMode === 0 ? 0 : timerMode * 60);
+    saveState();
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    alert(`SYNTHESIS COMPLETE: +${earnedCycles} MW-Cycles logged.`);
+  }
+
+  function abortTimer() {
+    clearInterval(timerInterval);
+    const elapsedMins = Math.floor((Date.now() - timerStartTimestamp) / 60000);
+    timerRunning = false;
+    document.getElementById('start-btn').innerText = 'ENGAGE SYNTHESIS';
+    document.getElementById('abort-btn').style.display = 'none';
+
+    const salvageCycles = Math.floor(elapsedMins * 0.5);
+    state.cycles += salvageCycles;
+    state.streakBonus = 0.0;
+    state.abortedSessions += 1;
+
+    updateTimerDisplay(timerMode === 0 ? 0 : timerMode * 60);
+    saveState();
+    alert(`THERMAL FAULT: Multiplier reset to base. Salvaged ${salvageCycles} MW-Cycles.`);
+  }
+
+  // Manifest (Goals) Functions
+  function addGoal() {
+    const title = document.getElementById('new-goal-title').value.trim();
+    const tier = parseInt(document.getElementById('new-goal-tier').value);
+    if (!title) return;
+    state.goals.push({
+      id: 'g' + Date.now(),
+      title,
+      tier,
+      mins: 0,
+      done: false
+    });
+    document.getElementById('new-goal-title').value = '';
+    saveState();
+  }
+
+  function completeGoal(id) {
+    const goal = state.goals.find(g => g.id === id);
+    if (!goal || goal.done) return;
+    goal.done = true;
+    const bpReward = goal.tier === 1 ? 1 : (goal.tier === 2 ? 3 : 5);
+    state.blueprints += bpReward;
+    saveState();
+  }
+
+  function resetCompletedGoals() {
+    state.goals = state.goals.filter(g => !g.done);
+    saveState();
+  }
+
+  // Foundry / Upgrades
+  function upgradeNode(id) {
+    const node = state.nodes.find(n => n.id === id);
+    if (state.cycles >= node.costC && state.blueprints >= node.costB) {
+      state.cycles -= node.costC;
+      state.blueprints -= node.costB;
+      node.lvl += 1;
+      node.costC = Math.round(node.costC * 1.6);
+      node.costB = Math.round(node.costB * 1.5);
+      saveState();
+    }
+  }
+
+  function claimReward(id) {
+    const r = state.rewards.find(x => x.id === id);
+    if (state.blueprints >= r.costB) {
+      state.blueprints -= r.costB;
+      saveState();
+      alert(`REQUISITION AUTHORIZED: ${r.title}`);
+    }
+  }
+
+  function addCustomReward() {
+    const title = document.getElementById('custom-reward-title').value.trim();
+    const costB = parseInt(document.getElementById('custom-reward-cost').value);
+    if (!title) return;
+    state.rewards.push({ id: 'r' + Date.now(), title, costB });
+    document.getElementById('custom-reward-title').value = '';
+    saveState();
+  }
+
+  function exportData() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+    const a = document.createElement('a');
+    a.href = dataStr;
+    a.download = "foundry_telemetry.json";
+    a.click();
+  }
+
+  // Render UI
+  function renderAll() {
+    document.getElementById('ui-cycles').innerText = state.cycles;
+    document.getElementById('ui-bp').innerText = state.blueprints;
+    document.getElementById('ui-mult').innerText = getTotalMult().toFixed(2) + 'x';
+    
+    const totalSess = state.completedSessions + state.abortedSessions;
+    const snr = totalSess === 0 ? 100 : Math.round((state.completedSessions / totalSess) * 100);
+    document.getElementById('ui-snr').innerText = snr + '%';
+
+    // Populate Goal Dropdown
+    const select = document.getElementById('active-goal-select');
+    const currentVal = select.value;
+    select.innerHTML = '<option value="general">General System Operations</option>';
+    state.goals.filter(g => !g.done).forEach(g => {
+      select.innerHTML += `<option value="${g.id}">[T${g.tier}] ${g.title}</option>`;
+    });
+    if (currentVal) select.value = currentVal;
+
+    // Render Goals List
+    const goalsDiv = document.getElementById('goals-list');
+    goalsDiv.innerHTML = '';
+    state.goals.forEach(g => {
+      const bp = g.tier === 1 ? 1 : (g.tier === 2 ? 3 : 5);
+      goalsDiv.innerHTML += `
+        <div class="goal-item ${g.done ? 'done' : ''}">
+          <div class="goal-info">
+            <div class="goal-title">${g.title}</div>
+            <div class="goal-meta">
+              <span class="tier-badge">TIER ${g.tier} (+${bp} BP)</span>
+              Logged: ${g.mins} mins
+            </div>
+          </div>
+          ${!g.done ? `<button class="check-btn" onclick="completeGoal('${g.id}')">COMPLETE</button>` : '<span style="color:var(--green);font-size:11px;font-weight:bold;">VERIFIED</span>'}
+        </div>
+      `;
+    });
+
+    // Render Foundry Nodes
+    const nodesDiv = document.getElementById('nodes-list');
+    nodesDiv.innerHTML = '';
+    state.nodes.forEach(n => {
+      const canAfford = state.cycles >= n.costC && state.blueprints >= n.costB;
+      nodesDiv.innerHTML += `
+        <div class="node-card">
+          <div style="flex:1; margin-right: 10px;">
+            <div style="font-size:13px; font-weight:bold;">${n.name} <span class="node-lvl">Lv.${n.lvl}</span></div>
+            <div class="node-desc">${n.desc}</div>
+          </div>
+          <button class="upgrade-btn" ${!canAfford ? 'disabled' : ''} onclick="upgradeNode('${n.id}')">
+            UPGRADE<br>${n.costC} MW | ${n.costB} BP
+          </button>
+        </div>
+      `;
+    });
+
+    // Render Requisition Store
+    const rewardsDiv = document.getElementById('rewards-list');
+    rewardsDiv.innerHTML = '';
+    state.rewards.forEach(r => {
+      const canAfford = state.blueprints >= r.costB;
+      rewardsDiv.innerHTML += `
+        <div class="node-card">
+          <div style="font-size:13px; font-weight:bold;">${r.title}</div>
+          <button class="upgrade-btn" ${!canAfford ? 'disabled' : ''} onclick="claimReward('${r.id}')">
+            CLAIM (${r.costB} BP)
+          </button>
+        </div>
+      `;
+    });
+
+    // Render Telemetry Bars
+    const barsDiv = document.getElementById('weekly-bars');
+    barsDiv.innerHTML = '';
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+      const mins = state.dailyMins[day] || 0;
+      const pct = Math.min(100, Math.round((mins / 240) * 100)); // 4 hours = 100% bar scale
+      barsDiv.innerHTML += `
+        <div class="bar-row">
+          <div class="bar-label">${day}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+          <div class="bar-val">${(mins/60).toFixed(1)}h</div>
+        </div>
+      `;
+    });
+  }
+
+  renderAll();
+</script>
+</body>
+</html>
